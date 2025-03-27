@@ -30,7 +30,7 @@ jobs:
       run: dotnet build --configuration Release --no-restore /p:ContinuousIntegrationBuild=true
       
     - name: Test
-      run: dotnet test --no-build --verbosity normal /p:ContinuousIntegrationBuild=true
+      run: dotnet test --verbosity normal
 
     - name: Build and Pack with Version
       run: dotnet pack --configuration Release --no-restore /p:Version=1.0.$GITHUB_RUN_NUMBER /p:ContinuousIntegrationBuild=true
