@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<Authors>Noah Surprenant</Authors>
+	<PackageId>CensusGeocoder</PackageId>
+	<Description>The Census Geocoder provides interactive and programmatic (REST) access to users interested in matching addresses to geographic locations and entities containing those addresses.</Description>
+	<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <RepositoryUrl>https://github.com/NoahSurprenant/CensusGeocoder</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/NoahSurprenant/CensusGeocoder</PackageProjectUrl>
+	<!--<Version></Version> Set by pipeline -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
