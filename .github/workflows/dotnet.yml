@@ -15,14 +15,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 9.0.x
+        
     - name: Restore dependencies
       run: dotnet restore
+      
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --configuration Release --no-restore /p:ContinuousIntegrationBuild=true
+      
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --no-build --verbosity normal /p:ContinuousIntegrationBuild=true
+
+    - name: Build and Pack with Version
+      run: dotnet pack --configuration Release --no-restore /p:Version=1.0.$GITHUB_RUN_NUMBER /p:ContinuousIntegrationBuild=true
+
+    - name: Publish
+      env:
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      run: dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY --skip-duplicate
