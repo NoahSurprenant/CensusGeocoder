@@ -64,15 +64,23 @@ public class GeocodingService
             var uniqueID = Parse(fields[0]);
             var input = Parse(fields[1]);
             var matchStr = Parse(fields[2]);
-            var match = matchStr switch
+            var found = matchStr switch
             {
                 "Match" => true,
+                "Tie" => true,
                 "No_Match" => false,
-                _ => throw new ArgumentOutOfRangeException(nameof(matchStr), matchStr, $"{nameof(matchStr)} was out of range. Expected Match or No_Match, but got {matchStr}"),
+                _ => throw new ArgumentOutOfRangeException(nameof(matchStr), matchStr, $"{nameof(matchStr)} was out of range. Expected Match, No_Match, or Tie, but got {matchStr}"),
             };
-            var matchType = match ? Parse(fields[3]) : null;
-            var validatedAddress = match ? Parse(fields[4]) : null;
-            var coordinates = match ? Parse(fields[5]) : null;
+            var match = matchStr switch
+            {
+                "Match" => Match.Match,
+                "Tie" => Match.Tie,
+                "No_Match" => Match.NoMatch,
+                _ => throw new ArgumentOutOfRangeException(nameof(matchStr), matchStr, $"{nameof(matchStr)} was out of range. Expected Match, No_Match or Tie, but got {matchStr}"),
+            };
+            var matchType = found ? Parse(fields[3]) : null;
+            var validatedAddress = found ? Parse(fields[4]) : null;
+            var coordinates = found ? Parse(fields[5]) : null;
             decimal? lat = null;
             decimal? lon = null;
             if (coordinates is not null)
@@ -81,10 +89,10 @@ public class GeocodingService
                 lat = decimal.Parse(split[1]);
                 lon = decimal.Parse(split[0]);
             }
-            var tigerLine1 = match ? Parse(fields[6]) : null;
-            var tigerLine2 = match ? Parse(fields[7]) : null;
+            var tigerLine1 = found ? Parse(fields[6]) : null;
+            var tigerLine2 = found ? Parse(fields[7]) : null;
             list.Add(
-                new BulkLineResponse(UniqueId: uniqueID, Input: input, Match: match,
+                new BulkLineResponse(UniqueId: uniqueID, Input: input, Found: found, Match: match,
                 MatchKind: matchType, ValidatedAddress: validatedAddress, lat, lon, TigerLineId: tigerLine1, TigerLineSide: tigerLine2)
                 );
         }
@@ -250,6 +258,13 @@ public enum ReturnType
     geographies,
 }
 
+public enum Match
+{
+    Match,
+    NoMatch,
+    Tie,
+}
+
 public enum SearchType
 {
     onelineaddress,
@@ -259,4 +274,4 @@ public enum SearchType
 }
 
 public record BulkLine(string UniqueId, string StreetAddress, string City, string State, string Zip);
-public record BulkLineResponse(string UniqueId, string Input, bool Match, string? MatchKind, string? ValidatedAddress, decimal? Latitude, decimal? Longitude, string? TigerLineId, string? TigerLineSide);
+public record BulkLineResponse(string UniqueId, string Input, bool Found, Match Match, string? MatchKind, string? ValidatedAddress, decimal? Latitude, decimal? Longitude, string? TigerLineId, string? TigerLineSide);
