@@ -15,8 +15,6 @@ internal class Program
 
         //await service.BulkFile("C:\\Users\\username\\Documents\\test.csv");
 
-        var foo3 = await service.BulkMemory([new("41253983-84fb-4a25-9650-11ee5ec467fd", StreetAddress: "100 N Capitol Ave", City: "Lansing", State: "MI", Zip: "48933")]);
-
-
+        var foo = await service.BulkAddressAsync([new("41253983-84fb-4a25-9650-11ee5ec467fd", StreetAddress: "100 N Capitol Ave", City: "Lansing", State: "MI", Zip: "48933")]);
     }
 }

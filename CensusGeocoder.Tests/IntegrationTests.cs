@@ -29,9 +29,9 @@ public class Tests
     }
 
     [Test]
-    public async Task BulkMemory()
+    public async Task BulkAddress()
     {
-        var response = (await service.BulkMemory([new(UniqueId: "41253983-84fb-4a25-9650-11ee5ec467fd", StreetAddress: "100 N Capitol Ave", City: "Lansing", State: "MI", Zip: "48933")])).ToList();
+        var response = (await service.BulkAddressAsync([new(UniqueId: "41253983-84fb-4a25-9650-11ee5ec467fd", StreetAddress: "100 N Capitol Ave", City: "Lansing", State: "MI", Zip: "48933")])).ToList();
         Assert.That(response, Has.Count.EqualTo(1));
         Assert.That(response.First().Found, Is.True);
         Assert.That(response.First().Match, Is.EqualTo(Match.Match));
@@ -43,7 +43,7 @@ public class Tests
     public async Task HandleComma()
     {
         // Having a comma in the address should encode correctly so the API can parse the CSV
-        var response = await service.BulkMemory([new(UniqueId: "foo", StreetAddress: "1700 CAPITAL AVE, SUITE 200", City: "Plano", State: "TX", Zip: "75074")]);
+        var response = await service.BulkAddressAsync([new(UniqueId: "foo", StreetAddress: "1700 CAPITAL AVE, SUITE 200", City: "Plano", State: "TX", Zip: "75074")]);
         Assert.That(response, Has.Count.EqualTo(1));
         Assert.That(response.First().Found, Is.True);
         Assert.That(response.First().Match, Is.EqualTo(Match.Match));
@@ -52,10 +52,29 @@ public class Tests
     }
 
     [Test]
+    public async Task HandleNewLine()
+    {
+        // Having a new line in the address should not cause an error
+        var response = await service.BulkAddressAsync([
+            new(UniqueId: "foo", StreetAddress: "1700 CAPITAL AVE\nSUITE 200", City: "Plano", State: "TX", Zip: "75074"),
+            new(UniqueId: "bar", StreetAddress: "1700 CAPITAL AVE\nSUITE 200", City: "Plano", State: "TX", Zip: "75074"),
+            ]);
+        Assert.That(response, Has.Count.EqualTo(2));
+        Assert.That(response.First().Found, Is.True);
+        Assert.That(response.First().Match, Is.EqualTo(Match.Match));
+        Assert.That(response.First().Latitude, Is.EqualTo(33.011011211636m));
+        Assert.That(response.First().Longitude, Is.EqualTo(-96.689146259288m));
+        Assert.That(response[1].Found, Is.True);
+        Assert.That(response[1].Match, Is.EqualTo(Match.Match));
+        Assert.That(response[1].Latitude, Is.EqualTo(33.011011211636m));
+        Assert.That(response[1].Longitude, Is.EqualTo(-96.689146259288m));
+    }
+
+    [Test]
     public async Task DoesNotExist()
     {
         // CSV Response should properly parse when there is a response for an address with no match
-        var response = (await service.BulkMemory([new(UniqueId: "41253983-84fb-4a25-9650-11ee5ec467fd", StreetAddress: "99999 N Capitol Ave", City: "Lansing", State: "MI", Zip: "48933")])).ToList();
+        var response = (await service.BulkAddressAsync([new(UniqueId: "41253983-84fb-4a25-9650-11ee5ec467fd", StreetAddress: "99999 N Capitol Ave", City: "Lansing", State: "MI", Zip: "48933")])).ToList();
         Assert.That(response, Has.Count.EqualTo(1));
         Assert.That(response.First().Found, Is.False);
         Assert.That(response.First().Match, Is.EqualTo(Match.NoMatch));
@@ -67,7 +86,7 @@ public class Tests
     public async Task HandleTie()
     {
         // CSV Response should properly handle when there is a Tie, response is similar to that of no match
-        var response = (await service.BulkMemory([new(UniqueId: "41253983-84fb-4a25-9650-11ee5ec467fd", StreetAddress: "4004 HILLSBORO RD", City: "Nashville", State: "TN", Zip: "37215")])).ToList();
+        var response = (await service.BulkAddressAsync([new(UniqueId: "41253983-84fb-4a25-9650-11ee5ec467fd", StreetAddress: "4004 HILLSBORO RD", City: "Nashville", State: "TN", Zip: "37215")])).ToList();
         Assert.That(response, Has.Count.EqualTo(1));
         Assert.That(response.First().Found, Is.False);
         Assert.That(response.First().Match, Is.EqualTo(Match.Tie));

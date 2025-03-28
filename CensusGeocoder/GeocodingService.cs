@@ -1,4 +1,8 @@
-﻿using System.Net.Http.Headers;
+﻿using CsvHelper;
+using CsvHelper.Configuration;
+using System.Globalization;
+using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 
@@ -33,7 +37,18 @@ public class GeocodingService
         await Bulk(content, ct);
     }
 
-    public async Task<List<BulkLineResponse>> BulkMemory(BulkLine[] lines, CancellationToken ct = default)
+    public async Task<List<BulkLineResponse>> BulkAddressAsync(BulkLine[] lines, CancellationToken ct = default)
+    {
+        var list = new List<BulkLineResponse>();
+        await foreach (var response in BulkAddressAsyncEnumerable(lines, ct))
+        {
+            list.Add(response);
+        }
+        return list;
+    }
+
+
+    public async IAsyncEnumerable<BulkLineResponse> BulkAddressAsyncEnumerable(BulkLine[] lines, [EnumeratorCancellation] CancellationToken ct = default)
     {
         var sb = new StringBuilder();
         foreach (var line in lines)
@@ -55,15 +70,25 @@ public class GeocodingService
         content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
         var response = await Bulk(content, ct);
 
-        using var reader = new StreamReader(await response.Content.ReadAsStreamAsync());
-        var list = new List<BulkLineResponse>();
-        while (!reader.EndOfStream)
+        if (response.IsSuccessStatusCode is false)
         {
-            var line = reader.ReadLine() ?? throw new Exception("Line was null");
-            var fields = line.Split("\",\"");
-            var uniqueID = Parse(fields[0]);
-            var input = Parse(fields[1]);
-            var matchStr = Parse(fields[2]);
+            var error = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Status Code: {response.StatusCode} - {error}");
+        }
+
+        using var streamReader = new StreamReader(await response.Content.ReadAsStreamAsync());
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            HasHeaderRecord = false,
+            MissingFieldFound = null,
+        };
+        using var csvReader = new CsvReader(streamReader, config);
+        var records = csvReader.GetRecords<CSVRecord>();
+        foreach (var record in records)
+        {
+            var uniqueID = record.UniqueId;
+            var input = record.Input;
+            var matchStr = record.Match;
             var found = matchStr switch
             {
                 "Match" => true,
@@ -78,9 +103,9 @@ public class GeocodingService
                 "No_Match" => Match.NoMatch,
                 _ => throw new ArgumentOutOfRangeException(nameof(matchStr), matchStr, $"{nameof(matchStr)} was out of range. Expected Match, No_Match or Tie, but got {matchStr}"),
             };
-            var matchType = found ? Parse(fields[3]) : null;
-            var validatedAddress = found ? Parse(fields[4]) : null;
-            var coordinates = found ? Parse(fields[5]) : null;
+            var matchType = found ? record.MatchKind : null;
+            var validatedAddress = found ? record.ValidatedAddress : null;
+            var coordinates = found ? record.Coordinates : null;
             decimal? lat = null;
             decimal? lon = null;
             if (coordinates is not null)
@@ -89,25 +114,18 @@ public class GeocodingService
                 lat = decimal.Parse(split[1]);
                 lon = decimal.Parse(split[0]);
             }
-            var tigerLine1 = found ? Parse(fields[6]) : null;
-            var tigerLine2 = found ? Parse(fields[7]) : null;
-            list.Add(
-                new BulkLineResponse(UniqueId: uniqueID, Input: input, Found: found, Match: match,
-                MatchKind: matchType, ValidatedAddress: validatedAddress, lat, lon, TigerLineId: tigerLine1, TigerLineSide: tigerLine2)
-                );
+            var tigerLine1 = found ? record.TigerLineId : null;
+            var tigerLine2 = found ? record.TigerLineSide : null;
+            yield return new BulkLineResponse(UniqueId: uniqueID, Input: input, Found: found, Match: match,
+            MatchKind: matchType, ValidatedAddress: validatedAddress, lat, lon, TigerLineId: tigerLine1, TigerLineSide: tigerLine2);
         }
-        return list;
     }
 
     private string Encode(string raw)
     {
-        // Commas have to be surrounded by quotes
-        return raw.Replace(",", "\",\"");
-    }
-
-    private string Parse(string raw)
-    {
-        return raw.Trim('"').Trim();
+        
+        return raw.Replace(",", "\",\"") // Commas have to be surrounded by quotes
+            .Replace("\n", "\"\n\"");
     }
 
     private async Task<HttpResponseMessage> Bulk(HttpContent content, CancellationToken ct = default)
@@ -249,6 +267,18 @@ public class GeocodingService
     private class LocationResponse
     {
         public LocationDto result { get; set; } = null!;
+    }
+
+    private class CSVRecord
+    {
+        public string UniqueId { get; set; } = null!;
+        public string Input { get; set; } = null!;
+        public string Match { get; set; } = null!;
+        public string? MatchKind { get; set; }
+        public string? ValidatedAddress { get; set; }
+        public string? Coordinates { get; set; }
+        public string? TigerLineId { get; set; }
+        public string? TigerLineSide { get; set; }
     }
 }
 
