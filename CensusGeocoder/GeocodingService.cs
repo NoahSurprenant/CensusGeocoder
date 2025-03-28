@@ -67,7 +67,7 @@ public class GeocodingService
             var found = matchStr switch
             {
                 "Match" => true,
-                "Tie" => true,
+                "Tie" => false,
                 "No_Match" => false,
                 _ => throw new ArgumentOutOfRangeException(nameof(matchStr), matchStr, $"{nameof(matchStr)} was out of range. Expected Match, No_Match, or Tie, but got {matchStr}"),
             };

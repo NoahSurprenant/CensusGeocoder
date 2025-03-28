@@ -64,6 +64,18 @@ public class Tests
     }
 
     [Test]
+    public async Task HandleTie()
+    {
+        // CSV Response should properly handle when there is a Tie, response is similar to that of no match
+        var response = (await service.BulkMemory([new(UniqueId: "41253983-84fb-4a25-9650-11ee5ec467fd", StreetAddress: "4004 HILLSBORO RD", City: "Nashville", State: "TN", Zip: "37215")])).ToList();
+        Assert.That(response, Has.Count.EqualTo(1));
+        Assert.That(response.First().Found, Is.False);
+        Assert.That(response.First().Match, Is.EqualTo(Match.Tie));
+        Assert.That(response.First().Latitude, Is.Null);
+        Assert.That(response.First().Longitude, Is.Null);
+    }
+
+    [Test]
     public async Task GetBenchmarks()
     {
         var response = (await service.GetBenchmarks()).ToList();
