@@ -38,15 +38,15 @@ public class GeocodingService
         var sb = new StringBuilder();
         foreach (var line in lines)
         {
-            sb.Append(line.uniqueID);
+            sb.Append(Encode(line.UniqueId));
             sb.Append(',');
-            sb.Append(line.streetAddress);
+            sb.Append(Encode(line.StreetAddress));
             sb.Append(',');
-            sb.Append(line.city);
+            sb.Append(Encode(line.City));
             sb.Append(',');
-            sb.Append(line.state);
+            sb.Append(Encode(line.State));
             sb.Append(',');
-            sb.Append(line.zip);
+            sb.Append(Encode(line.Zip));
             sb.Append('\n');
         }
         string csvContent = sb.ToString();
@@ -60,16 +60,41 @@ public class GeocodingService
         while (!reader.EndOfStream)
         {
             var line = reader.ReadLine() ?? throw new Exception("Line was null");
-            var fields = line.Split(',');
+            var fields = line.Split("\",\"");
+            var uniqueID = Parse(fields[0]);
+            var input = Parse(fields[1]);
+            var matchStr = Parse(fields[2]);
+            var match = matchStr switch
+            {
+                "Match" => true,
+                "No_Match" => false,
+                _ => throw new ArgumentOutOfRangeException(nameof(matchStr), matchStr, $"{nameof(matchStr)} was out of range. Expected Match or No_Match, but got {matchStr}"),
+            };
+            var matchType = match ? Parse(fields[3]) : null;
+            var validatedAddress = match ? Parse(fields[4]) : null;
+            var coordinates = match ? Parse(fields[5]) : null;
+            decimal? lat = null;
+            decimal? lon = null;
+            if (coordinates is not null)
+            {
+                var split = coordinates.Split(',');
+                lat = decimal.Parse(split[1]);
+                lon = decimal.Parse(split[0]);
+            }
+            var tigerLine1 = match ? Parse(fields[6]) : null;
+            var tigerLine2 = match ? Parse(fields[7]) : null;
             list.Add(
-                new BulkLineResponse(
-                    Parse(fields[0]), Parse(fields[1]), Parse(fields[2]), Parse(fields[3]), Parse(fields[4]), Parse(fields[5]),
-                    Parse(fields[6]), Parse(fields[7]), Parse(fields[8]), Parse(fields[9]), Parse(fields[10]), Parse(fields[11]),
-                    Parse(fields[12]), Parse(fields[13]), Parse(fields[14])
-                    )
+                new BulkLineResponse(UniqueId: uniqueID, Input: input, Match: match,
+                MatchKind: matchType, ValidatedAddress: validatedAddress, lat, lon, TigerLineId: tigerLine1, TigerLineSide: tigerLine2)
                 );
         }
         return list;
+    }
+
+    private string Encode(string raw)
+    {
+        // Commas have to be surrounded by quotes
+        return raw.Replace(",", "\",\"");
     }
 
     private string Parse(string raw)
@@ -233,5 +258,5 @@ public enum SearchType
     coordinates,
 }
 
-public record BulkLine(string uniqueID, string streetAddress, string city, string state, string zip);
-public record BulkLineResponse(string uniqueID, string streetAddress, string city, string state, string zip, string match, string match2, string validatedStreetAddress, string validatedCity, string validatedState, string validatedZip, string lat, string lon, string tigerLineId, string tigerLineSide);
+public record BulkLine(string UniqueId, string StreetAddress, string City, string State, string Zip);
+public record BulkLineResponse(string UniqueId, string Input, bool Match, string? MatchKind, string? ValidatedAddress, decimal? Latitude, decimal? Longitude, string? TigerLineId, string? TigerLineSide);
